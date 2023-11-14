@@ -1,5 +1,6 @@
 import { GeoCoord } from "./fetchGeoCoord.js";
 import fetch from "../include/fetch.js";
+import { URL } from "url";
 
 interface TemperatureReading {
   time: string[];
@@ -8,14 +9,23 @@ interface TemperatureReading {
 
 export function fetchCurrentTemperature(coords: GeoCoord): Promise<TemperatureReading> {
   // TODO
-  const url = `https://220.maxkuechen.com/currentTemperature/forecast?latitude=${coords.lat}&longitude=${coords.lon}&hourly=temperature_2m&temperature_unit=fahrenheit`;
 
-  return fetch(url)
-    .then((response: any) => response.json())
-    .then((data: TemperatureReading) => {
-      const time: string[] = data.time;
-      const temperature_2m: number[] = data.temperature_2m;
+  function makeSearchURL(latQuery: string, longQuery: string): string {
+    // Construct a new URL object using the resource URL
+    const searchURL = new URL(" https://220.maxkuechen.com/currentTemperature/forecast?");
+    searchURL.searchParams.append("latitude", latQuery);
+    searchURL.searchParams.append("longitude", longQuery);
+    searchURL.searchParams.append("hourly", "temperature_2m");
+    searchURL.searchParams.append("temperature_unit", "fahrenheit");
 
+    return searchURL.toString();
+  }
+
+  return fetch(makeSearchURL(String(coords.lat), String(coords.lon)))
+    .then((response: Response) => (response.ok ? response.json() : Promise.reject(new Error(response.statusText))))
+    .then((data: { hourly: TemperatureReading }) => {
+      const time: string[] = data.hourly.time;
+      const temperature_2m: number[] = data.hourly.temperature_2m;
       return { time, temperature_2m };
     });
 }
