@@ -5,13 +5,12 @@ interface Name {
 }
 
 export function fetchUniversities(query: string): Promise<string[]> {
-  // TODO
 
-  function makeSearchURL(query: string): string {
-    const searchURL = new URL("http://220.maxkuechen.com/universities/search?");
-    searchURL.searchParams.append("name", query);
-    return searchURL.toString();
-  }
+  const makeSearchURL = (query: string): string => {
+      const searchURL = new URL("http://220.maxkuechen.com/universities/search?");
+      searchURL.searchParams.append("name", query);
+      return searchURL.toString();
+    };
 
   const url: string = makeSearchURL(query);
 
