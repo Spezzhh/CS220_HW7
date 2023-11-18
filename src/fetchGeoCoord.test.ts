@@ -1,6 +1,9 @@
 import assert from "assert";
 import { fetchGeoCoord } from "./fetchGeoCoord.js";
 
+jest.setTimeout(5000); // 5 second timeout
+
+
 describe("fetchGeoCoord", () => {
   it("follows type specification", () => {
     const promise = fetchGeoCoord("University of Massachusetts Amherst");
