@@ -13,4 +13,11 @@ describe("fetchCurrentTemperature", () => {
       assert(result.temperature_2m.every(x => typeof x === "number")); // Assert each element in that time is a number
     });
   });
+
+  it("handles invalid coordinates", () => {
+    const invalidCoords = { lat: -200, lon: 300 };
+    return fetchCurrentTemperature(invalidCoords).catch(error => {
+      assert(error instanceof Error); // Assert the function throws an error for invalid coordinates
+    });
+  });
 });
