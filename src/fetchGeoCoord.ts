@@ -1,79 +1,42 @@
 import fetch from "../include/fetch.js";
-import { URL } from "url";
+import { URL_Builder } from "./utility.js";
+
 
 export interface GeoCoord {
-    lat: number;
-    lon: number;
+  lat: number;
+  lon: number;
 }
-// Helper that builds a URL for the geoCoord API
-function makeGeoURL(query: string): string {
-    const searchURL = new URL("https://220.maxkuechen.com/geoCoord/search"); // base url for our API usage
-    searchURL.searchParams.append("q", (query));
-    return searchURL.toString();
+// (AJ 11/21) - Updated with an interface to handle type error (was getting
+//               a type error in on line 35, this addition fixed it)
+interface ApiResponseItem {
+  lon: string; // Assuming these are strings that you'll parse into numbers
+  lat: string;
 }
 
 export function fetchGeoCoord(query: string): Promise<GeoCoord> {
-    // AJ - Base implementation 11/16 & 11/17
-    const geoURL = makeGeoURL(query); // turn query str into url
-    console.log("URL being fetched:", geoURL); // url debugging print statement
-    return fetch(geoURL)
-        .then(apiResponse => {
-            if (!apiResponse.ok) {
-                throw new Error(apiResponse.statusText); // displaying error message
-            }
-            return apiResponse.json(); // grab response as json
-        })
-        .then(data => {
-            if (!Array.isArray(data) || data.length === 0) { // if data is not an array/is empty throw error
-                throw new Error("No results");
-            }
+  // (AJ 11/21) - Updated function to incorporate URL_Builder function from utility.ts
+  const geoURL = URL_Builder("https://220.maxkuechen.com/geoCoord/search", "q", query); // turn query str into url
+  return fetch(geoURL)
+    .then(apiResponse => {
+      if (!apiResponse.ok) {
+        throw new Error(apiResponse.statusText); // displaying error message
+      }
+      return apiResponse.json(); // grab response as json
+    })
+      .then((data: ApiResponseItem[]) => { // using new interface to handle type error
+      if (!Array.isArray(data) || data.length === 0) {
+        // if data is not an array/is empty throw error
+        throw new Error("No results");
+      }
 
-            const first = data[0]; // first element in array, check if it has lon and lat values
-            if (typeof first !== 'object' || !('lon' in first) || !('lat' in first)) {
-                throw new Error('Invalid response format'); // if not throw error
-            }
-            return { // returning appropriate values (lon and lat)
-                lon: Number.parseFloat(first.lon),
-                lat: Number.parseFloat(first.lat)
-            };
-        });
-import fetch from "../include/fetch.js";
-import { URL } from "url";
-
-export interface GeoCoord {
-    lat: number;
-    lon: number;
-}
-// Helper that builds a URL for the geoCoord API
-function makeGeoURL(query: string): string {
-    const searchURL = new URL("https://220.maxkuechen.com/geoCoord/search"); // base url for our API usage
-    searchURL.searchParams.append("q", (query));
-    return searchURL.toString();
-}
-
-export function fetchGeoCoord(query: string): Promise<GeoCoord> {
-    // AJ - Base implementation 11/16 & 11/17
-    const geoURL = makeGeoURL(query); // turn query str into url
-    console.log("URL being fetched:", geoURL); // url debugging print statement
-    return fetch(geoURL)
-        .then(apiResponse => {
-            if (!apiResponse.ok) {
-                throw new Error(apiResponse.statusText); // displaying error message
-            }
-            return apiResponse.json(); // grab response as json
-        })
-        .then(data => {
-            if (!Array.isArray(data) || data.length === 0) { // if data is not an array/is empty throw error
-                throw new Error("No results");
-            }
-
-            const first = data[0]; // first element in array, check if it has lon and lat values
-            if (typeof first !== 'object' || !('lon' in first) || !('lat' in first)) {
-                throw new Error('Invalid response format'); // if not throw error
-            }
-            return { // returning appropriate values (lon and lat)
-                lon: Number.parseFloat(first.lon),
-                lat: Number.parseFloat(first.lat)
-            };
-        });
+      const first = data[0]; // first element in array, check if it has lon and lat values
+      if (typeof first !== "object" || !("lon" in first) || !("lat" in first)) {
+        throw new Error("Invalid response format"); // if not throw error
+      }
+      return {
+        // returning appropriate values (lon and lat)
+        lon: Number.parseFloat(first.lon),
+        lat: Number.parseFloat(first.lat),
+      };
+    });
 }
