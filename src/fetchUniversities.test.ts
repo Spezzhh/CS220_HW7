@@ -10,4 +10,14 @@ describe("fetchUniversities", () => {
       assert(result.every(x => typeof x === "string")); // Assert each element in the array is a string
     });
   });
+  // (AJ 11/21) - updated with a new test to reach coverage requirement
+  it("handles an invalid query appropriately", () => {
+    const invalidQuery = "FakeUniversity"; // blantantly invalid query
+    return fetchUniversities(invalidQuery).then(() => {
+      throw new Error("Test failed: Invalid query provided to test");
+    })
+        .catch(error => {
+          assert(error instanceof Error); // throw error for invalid query provided
+        });
+  });
 });
