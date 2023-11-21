@@ -3,49 +3,67 @@ import readline from "readline";
 
 // TODO - Now its your turn to make the working example! :)
 
-/* Our example asks the user for how many goals they want to filter NHL teams by
-   Then we make a fetch call to the nhl standings API on the given day (11-21)
-   We then filter our result to get two sets of data, 1) total teams in the league that have scored more than given amount
-   2) How many of those teams play in the Eastern conference
-   Then we output the user the two sets of data
+/* Our example prompts the user to enter the date 
+   Using that date we fetch the NHL standings for that date and the schedule for that date
+   We then tally up all the goals scored and all the games played in the league and divide to get the rate of goals scored per team per game
+   We also then find today's date and we get the number of games being played today
+   Using these two pieces of data we can calculate how many goals we can expect to be scored today 
 */
 
 const userInput = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
+  input: process.stdin,
+  output: process.stdout,
 });
 
-const url = new URL("https://api-web.nhle.com/v1/standings/2023-11-21");
+// API endpoints without today's date
+let standingsBase = "https://api-web.nhle.com/v1/standings/";
+let scheduleBase = "https://api-web.nhle.com/v1/schedule/";
 
-export function fetchGoalsScored(gs: number, url: URL): Promise<{ totalGs: number; totalInConf: number }> {
-    return fetch(url)
-        .then(response => (response.ok ? response.json() : Promise.reject(new Error(response.statusText))))
-        .then(data => {
-            const goals = data.standings.filter((team: { goalFor: number }) => team.goalFor >= gs); //get the first set of data: total teams in the league that have scored more than given amount
-            const conf = data.standings.filter(
-                (team: { goalFor: number; conferenceAbbrev: string }) => team.goalFor >= gs && team.conferenceAbbrev === "E"
-            ); //get the second set of data: How many of those teams play in the Eastern conference
-            return { totalGs: goals.length, totalInConf: conf.length };
-        })
-        .catch(e => {
-            return Promise.reject(new Error("Error fetching or processing data"));
-        });
+export function fetchGoalsScoredRate(url: URL): Promise<{ rate: number }> {
+  return fetch(url)
+    .then(response => (response.ok ? response.json() : Promise.reject(new Error(response.statusText))))
+    .then(data => {
+      const goals = data.standings.reduce((acc: number, team: { goalFor: number }) => (acc += team.goalFor), 0); // accumulate the total amount of goals scored
+      const gamesPlayed = data.standings.reduce((acc: number, team: { gamesPlayed: number }) => (acc += team.gamesPlayed), 0); // accumulate the amount of games played
+      return { rate: goals / gamesPlayed }; // calculate the rate goals are being scored at per team
+    })
+    .catch(e => {
+      return Promise.reject(new Error("Error fetching or processing data: Make sure date is valid"));
+    });
 }
 
-userInput.question("How many goals do you want to filter the teams by: ", answer => {
-    // prompt the user to enter how many goals they want to filter by
-    const gs = Number(answer);
-    if (Number.isNaN(gs) || gs < 0) throw new Error("Invalid input");
-    fetchGoalsScored(gs, url).then(result =>
-        console.log(
-            "The amount of teams that have scored more than",
-            gs,
-            "goals are",
-            result.totalGs,
-            "and ",
-            result.totalInConf,
-            "are in the Eastern Conference"
-        )
-    );
-    userInput.close();
+export function fetchGamesToday(url: URL, today: string): Promise<{ todayGames: number }> {
+  return fetch(url)
+    .then(response => (response.ok ? response.json() : Promise.reject(new Error(response.statusText))))
+    .then(data => {
+      const tG = data.gameWeek.find((d: { date: string }) => d.date === today); // find todays date in the game week and check if it is todays date (given by user)
+      return { todayGames: tG.numberOfGames }; // get the number of games being played today
+    })
+    .catch(e => {
+      return Promise.reject(new Error("Error fetching or processing data: Make sure date is valid"));
+    });
+}
+
+userInput.question("Enter todays date (YYYY-MM-DD): ", (date: string) => {
+  // prompt the user to enter todays date
+  if (date.length != 10) throw new Error("Invalid format: make sure you include hyphens and a digit in every spot"); //make sure user input is correct
+
+  // append the date to the API endpoints and make a URL with them
+  standingsBase += date;
+  scheduleBase += date;
+  const standingsUrl = new URL(standingsBase);
+  const scheduleUrl = new URL(scheduleBase);
+
+  // use Promise.all to resolve multiple fetches and store the resolved values in an object so we can access the values to calculate our expected
+  Promise.all([fetchGoalsScoredRate(standingsUrl), fetchGamesToday(scheduleUrl, date)])
+    .then(([goalRate, gamesToday]) => {
+      console.log(`The rate goals are being scored per team is ${goalRate.rate}`);
+      console.log(`There are ${gamesToday.todayGames} games being played today`);
+      const expected = goalRate.rate * 2 * gamesToday.todayGames; // calculate expected goals (2 teams per game so we multiply rate by 2 and then that by the total games being played)
+      console.log(`You can expect ${expected} goals to be scored`);
+    })
+    .catch(err => {
+      console.error("Error occurred:", err);
+    });
+  userInput.close();
 });
